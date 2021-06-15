@@ -1,0 +1,109 @@
+#include <Wire.h>
+#include "MAX30100_PulseOximeter.h"
+#include <DHT.h>  // Including library for dht
+#define REPORTING_PERIOD_MS 1000
+#include <LiquidCrystal.h>
+
+const int rs = 7, en = 6, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+PulseOximeter pox;
+int flag = 0;
+uint32_t tsLastReport = 0;
+#define DHTPIN 9         //pin where the dht11 is connected
+int rst = 10;
+DHT dht(DHTPIN, DHT11);
+void onBeatDetected()
+{
+  Serial.println("B:1");
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("   Welcome To ");
+  lcd.setCursor(0, 1);
+  lcd.print("Health Detector");
+  dht.begin();
+
+  if (!pox.begin(PULSEOXIMETER_DEBUGGINGMODE_PULSEDETECT)) {
+    Serial.println("ERROR: Failed to initialize pulse oximeter");
+    for (;;);
+  }
+  pox.setOnBeatDetectedCallback(onBeatDetected);
+
+}
+
+void loop()
+{
+  pox.update();
+  lcd.setCursor(0, 0);
+  lcd.print("   Welcome To ");
+  lcd.setCursor(0, 1);
+  lcd.print("Health Detector");
+
+  if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
+    Serial.print("H:");
+    Serial.println(pox.getHeartRate());
+
+    Serial.print("O:");
+    Serial.println(pox.getSpO2());
+
+    tsLastReport = millis();
+  }
+  if (pox.getHeartRate() > 70 && pox.getSpO2() > 80 && pox.getSpO2() < 110) {
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("   Checking   ");
+    lcd.setCursor(0, 1);
+    lcd.print(" Heart Beat ....");
+    delay(2000);
+    float temp = dht.readTemperature(true);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("  Heart Beat");
+    lcd.setCursor(5, 1);
+    lcd.print(pox.getHeartRate());
+    delay(2000);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("   Checking   ");
+    lcd.setCursor(0, 1);
+    lcd.print(" SpO2  ....");
+    delay(2000);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("  Spo2  = ");
+    lcd.print(pox.getSpO2());
+    lcd.print("%");
+    delay(2000);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("   Checking   ");
+    lcd.setCursor(0, 1);
+    lcd.print("Temperature  ....");
+    delay(2000);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Temperature =");
+    lcd.setCursor(0, 1);
+    lcd.print(temp); lcd.print(" F ");
+    delay(2000);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("   Thank You  ");
+    lcd.setCursor(0, 1);
+    lcd.print(" Stay Healthy ");
+    delay(2000);
+    pinMode(rst, OUTPUT);
+    digitalWrite(rst, HIGH);
+    digitalWrite(rst, LOW);
+  }
+}
